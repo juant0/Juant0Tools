@@ -6,14 +6,12 @@ using UnityEngine;
 
 namespace Juant0Tools
 {
-    [CustomPropertyDrawer(typeof(SelectAnimationClipAttribute))]
-    public class SelectAnimationClipPropertyDrawer : BasePropertyDrawer
+    [CustomPropertyDrawer(typeof(SelectAnimationStateAttribute))]
+    public class SelectAnimationStatePropertyDrawer : BasePropertyDrawer
     {
-        private AnimatorController _animator;
-
+        private Animator _animator;
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-
             float propertyHeight = base.GetPropertyHeight(property, label);
             if (property.isExpanded)
                 propertyHeight += EditorGUIUtility.singleLineHeight * 3;
@@ -27,8 +25,8 @@ namespace Juant0Tools
             if (property.isExpanded)
             {
                 Rect animatorRect = CreateRect(rect, yOffset: rect.height * 2);
-                _animator = (AnimatorController)EditorGUI.ObjectField(animatorRect, _animator, typeof(AnimatorController), true);
-                string clipName = GetClip(property, animatorRect, _animator);
+                _animator = (Animator)EditorGUI.ObjectField(animatorRect, _animator, typeof(Animator), true);
+                string clipName = GetClip(property, animatorRect, _animator == null ? null : _animator.runtimeAnimatorController);
                 rect.y += animatorRect.height;
                 label.text = $"{clipName}Hash";
             }
@@ -36,16 +34,15 @@ namespace Juant0Tools
                 EditorGUI.PropertyField(rect, property, label, false);
             EditorGUI.EndProperty();
         }
-
-        private string GetClip(SerializedProperty property, Rect rect, AnimatorController animatorController)
+        private string GetClip(SerializedProperty property, Rect rect, RuntimeAnimatorController animatorController)
         {
             Rect popUpRect = CreateRect(rect, yOffset: rect.height);
             if (_animator == null)
             {
-                EditorGUI.HelpBox(popUpRect, $"Please select an animatorContoller", MessageType.Warning);
+                EditorGUI.HelpBox(popUpRect, $"Please select an Animator", MessageType.Warning);
                 return lastParameterName;
             }
-            AnimationClip[] animatorControllerparameters = GetAnimationClips(animatorController);
+            AnimatorState[] animatorControllerparameters = GetAnimationClips(animatorController);
             if (animatorControllerparameters.Length == 0)
             {
                 EditorGUI.HelpBox(popUpRect, $"Animator Controller {_animator.name} does not have any Clip", MessageType.Warning);
@@ -68,20 +65,27 @@ namespace Juant0Tools
             }
             return -1;
         }
-        private AnimationClip[] GetAnimationClips(AnimatorController animatorController)
+        private AnimatorState[] GetAnimationClips(RuntimeAnimatorController runtimeController)
         {
-            List<AnimationClip> clips = new List<AnimationClip>();
+            List<AnimatorState> states = new List<AnimatorState>();
+            if (runtimeController is AnimatorOverrideController overrideController)
+                runtimeController = overrideController.runtimeAnimatorController;
+            AnimatorController animatorController = runtimeController as AnimatorController;
+            if (animatorController == null)
+            {
+                Debug.LogWarning("The controller is not an AnimatorController.");
+                return states.ToArray();
+            }
             foreach (AnimatorControllerLayer layer in animatorController.layers)
             {
                 foreach (ChildAnimatorState state in layer.stateMachine.states)
                 {
                     if (state.state.motion is AnimationClip clip)
-                        clips.Add(clip);
+                        states.Add(state.state);
                 }
             }
-            return clips.ToArray();
+            return states.ToArray();
         }
-
     }
 }
 #endif

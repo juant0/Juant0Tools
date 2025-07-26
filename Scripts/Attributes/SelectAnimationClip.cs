@@ -5,7 +5,7 @@ using UnityEngine;
 /// 
 namespace Juant0Tools
 {
-    public class SelectAnimationClipAttribute : PropertyAttribute
+    public class SelectAnimationStateAttribute : PropertyAttribute
     {
     }
 }

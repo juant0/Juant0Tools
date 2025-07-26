@@ -9,12 +9,11 @@ namespace Juant0Tools
     [CustomPropertyDrawer(typeof(SelectAnimatorParameterAttribute))]
     public class SelectAnimatorParameterPropertyDrawer : BasePropertyDrawer
     {
-        private AnimatorController _animator;
+        private Animator _animator;
         private AnimatorControllerParameterType _animatorControllerParameterType = 0;
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-
             float propertyHeight = base.GetPropertyHeight(property, label);
             if (property.isExpanded)
             {
@@ -32,8 +31,8 @@ namespace Juant0Tools
             if (property.isExpanded)
             {
                 Rect animatorRect = CreateRect(rect, yOffset: rect.height * 2);
-                _animator = (AnimatorController)EditorGUI.ObjectField(animatorRect, _animator, typeof(AnimatorController), true);
-                string paramaeterName = GetParameter(property, animatorRect, _animator);
+                AnimatorController animator = GetAnimatorController(animatorRect);
+                string paramaeterName = GetParameter(property, animatorRect, animator);
                 label.text = $"{paramaeterName}Hash";
                 rect.y += animatorRect.height;
             }
@@ -41,14 +40,22 @@ namespace Juant0Tools
                 EditorGUI.PropertyField(rect, property, label, false);
             EditorGUI.EndProperty();
         }
-
+        private AnimatorController GetAnimatorController(Rect rect)
+        {
+            _animator = (Animator)EditorGUI.ObjectField(rect, _animator, typeof(Animator), true);
+            if (_animator == null)
+                return null;
+            RuntimeAnimatorController runtimeController = _animator.runtimeAnimatorController;
+            if (runtimeController is AnimatorOverrideController overrideController)
+                runtimeController = overrideController.runtimeAnimatorController;
+            return runtimeController as AnimatorController;
+        }
         private string GetParameter(SerializedProperty property, Rect rect, AnimatorController animator)
         {
             Rect parameterTypeRect = CreateRect(rect, yOffset: rect.height);
             if (animator == null)
             {
                 EditorGUI.HelpBox(parameterTypeRect, $"Please select an animatorContoller", MessageType.Warning);
-                property.intValue = 0;
                 return lastParameterName;
             }
             GUIContent parameterTypeLabel = new GUIContent("Parameter Type");
@@ -57,7 +64,6 @@ namespace Juant0Tools
             if (_animatorControllerParameterType == 0)
             {
                 EditorGUI.HelpBox(popUpRect, $"Please select an parameter type", MessageType.Error);
-                property.intValue = 0;
                 return lastParameterName;
             }
             AnimatorControllerParameter[] animatorControllerparameters = animator.parameters;
@@ -65,7 +71,6 @@ namespace Juant0Tools
             if (allparameters.Count == 0)
             {
                 EditorGUI.HelpBox(popUpRect, $"Controller does not contain parameters of type {_animatorControllerParameterType}", MessageType.Error);
-                property.intValue = 0;
                 return lastParameterName;
             }
             string[] parameters = allparameters.ToArray();
